@@ -1,0 +1,26 @@
+{
+  "sims0": {
+    "first": {
+      "positions": 51,
+      "mistakes": 0
+    },
+    "second": {
+      "positions": 253,
+      "mistakes": 0
+    }
+  },
+  "sims64": {
+    "first": {
+      "positions": 51,
+      "mistakes": 0
+    },
+    "second": {
+      "positions": 254,
+      "mistakes": 0
+    }
+  },
+  "solver_accuracy": {
+    "policy_acc": 0.9988238753307851,
+    "value_acc": 0.9696902654867257
+  }
+}

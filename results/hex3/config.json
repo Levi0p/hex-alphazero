@@ -1,0 +1,19 @@
+{
+  "size": 3,
+  "channels": 32,
+  "blocks": 2,
+  "games": 128,
+  "sims": 32,
+  "moves": 16,
+  "temp_moves": null,
+  "random_open": 0.5,
+  "buffer": 100000,
+  "batch": 256,
+  "steps": 50,
+  "lr": 0.001,
+  "iters": 150,
+  "eval_every": 25,
+  "seed": 0,
+  "out": null,
+  "resume": false
+}

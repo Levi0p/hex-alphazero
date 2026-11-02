@@ -1,0 +1,9 @@
+{
+  "board": 5,
+  "sims": 64,
+  "games": 200,
+  "opp_random": 0.3,
+  "mohex_time": 1.0,
+  "winnable_positions": 824,
+  "kept_win": 823
+}

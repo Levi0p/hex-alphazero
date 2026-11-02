@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AlphaZero Hex</title>
+<style>
+  :root {
+    --bg: #f6f3ee; --panel: #fffdf9; --ink: #1f1d1a; --muted: #6b665e; --line: #d9d2c5;
+    --cell: #ece5d8; --cell-hover: #e0d6c3; --black: #23211f; --white: #fbfaf7; --white-edge: #b9b1a3;
+    --accent: #475569; --win: #16a34a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #171614; --panel: #201f1c; --ink: #ece8e1; --muted: #9c968c; --line: #3a3732;
+      --cell: #2c2a26; --cell-hover: #3a3731; --black: #0b0a09; --white: #f2efe8; --white-edge: #8d867a;
+      --accent: #94a3b8; --win: #4ade80;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #171614; --panel: #201f1c; --ink: #ece8e1; --muted: #9c968c; --line: #3a3732;
+    --cell: #2c2a26; --cell-hover: #3a3731; --black: #0b0a09; --white: #f2efe8; --white-edge: #8d867a;
+    --accent: #94a3b8; --win: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 22px; max-width: 640px; }
+  .layout { display: grid; grid-template-columns: 1fr 260px; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  .board-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
+  .cell { fill: var(--cell); stroke: var(--line); stroke-width: 1; cursor: pointer; transition: fill .12s; }
+  .cell.empty:hover { fill: var(--cell-hover); }
+  .cell.locked { cursor: default; }
+  .stone-b { fill: var(--black); }
+  .stone-w { fill: var(--white); stroke: var(--white-edge); stroke-width: 1.5; }
+  .winline { stroke: var(--win); stroke-width: 3; fill: none; }
+  .last { fill: var(--accent); }
+  .heat { fill: var(--accent); pointer-events: none; }
+  .heat-label { fill: var(--ink); font-size: 10px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .coord { fill: var(--muted); font-size: 11px; text-anchor: middle; dominant-baseline: central; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+  .row { margin-bottom: 14px; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; background: transparent; color: var(--ink); padding: 7px 0; font: inherit; cursor: pointer; }
+  .seg button.on { background: var(--ink); color: var(--bg); }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .btn { width: 100%; padding: 9px; border-radius: 8px; border: 1px solid var(--ink); background: var(--ink);
+         color: var(--bg); font: inherit; cursor: pointer; }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--ink); }
+  .status { font-weight: 600; min-height: 1.5em; margin: 0 0 6px; }
+  .meter { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .meter > div { height: 100%; background: var(--accent); width: 50%; transition: width .3s; }
+  .small { font-size: 13px; color: var(--muted); }
+  .legend { display: flex; gap: 14px; font-size: 13px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+  footer { margin-top: 28px; color: var(--muted); font-size: 13px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Play Hex against AlphaZero</h1>
+  <p class="sub">An AlphaZero agent trained from scratch by self-play on a MacBook Air, running entirely in your browser.
+    Black connects top to bottom, White connects left to right. On 5x5 it matches the MoHex engine on every opening; on 7x7 it is strong but not perfect.</p>
+
+  <div class="layout">
+    <div class="board-wrap">
+      <svg id="board" role="img" aria-label="Hex board"></svg>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--black)"></span>Black: top ↔ bottom</span>
+        <span><span class="dot" style="background:var(--white);border:1px solid var(--white-edge)"></span>White: left ↔ right</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="status" id="status">Loading…</p>
+      <div class="row">
+        <label>AlphaZero's win estimate</label>
+        <div class="meter"><div id="meter"></div></div>
+        <div class="small" id="meterText">–</div>
+      </div>
+      <h2>Game</h2>
+      <div class="row"><label>Board</label><div class="seg" id="sizes"></div></div>
+      <div class="row"><label>You play</label>
+        <div class="seg" id="side">
+          <button data-v="black" class="on">Black (first)</button><button data-v="white">White</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>Thinking: <span id="simsVal"></span> simulations per move</label>
+        <input type="range" id="sims" min="0" max="1600" step="16" value="400">
+      </div>
+      <div class="row"><label class="check"><input type="checkbox" id="showThinking" checked> Show where it looked</label></div>
+      <button class="btn" id="newGame">New game</button>
+    </div>
+  </div>
+
+  <footer>
+    Built with JAX: Hex rules, MCTS, the policy-value network and self-play were written from scratch, following
+    Silver et al. (2017) and Andy Jones, <i>Scaling Scaling Laws with Board Games</i> (2021).
+    Opponent and referee for testing: MoHex 2.0 (Benzene project).
+  </footer>
+</main>
+
+<script src="az.js"></script>
+<script src="models/hex5.js" onerror="this.remove()"></script>
+<script src="models/hex7.js" onerror="this.remove()"></script>
+<script>
+(function () {
+  const models = {};
+  for (const [k, json] of Object.entries(window.AZ_MODELS || {})) models[k] = AZ.loadModel(json);
+  const sizes = Object.keys(models).map(Number).sort((a, b) => a - b);
+
+  const svg = document.getElementById("board");
+  const statusEl = document.getElementById("status");
+  const simsEl = document.getElementById("sims");
+  const simsVal = document.getElementById("simsVal");
+  const meter = document.getElementById("meter");
+  const meterText = document.getElementById("meterText");
+  const showThinking = document.getElementById("showThinking");
+
+  let n = sizes.includes(7) ? 7 : sizes[sizes.length - 1];
+  let humanBlack = true;
+  let real, canon, blackToMove, over, thinking, lastMove, heat;
+  let gameId = 0;  // bumps on every new game, so a reply scheduled for an old game is ignored
+
+  const S = 22, W = Math.sqrt(3) * S, PAD = 34;
+  const centre = (r, c) => [PAD + W / 2 + (c + r / 2) * W, PAD + S + r * 1.5 * S];
+  const corner = (x, y, k) => { const a = Math.PI / 180 * (60 * k - 90); return [x + S * Math.cos(a), y + S * Math.sin(a)]; };
+  const toCanon = (i) => blackToMove ? i : (i % n) * n + ((i / n) | 0);  // transpose is its own inverse
+
+  function newGame() {
+    real = new Int8Array(n * n); canon = new Int8Array(n * n);
+    blackToMove = true; over = false; thinking = false; lastMove = -1; heat = null;
+    gameId += 1;
+    setMeter(null);
+    draw();
+    if (!humanBlack) agentMove(); else setStatus("Your move (Black).");
+  }
+
+  function setStatus(t) { statusEl.textContent = t; }
+  function setMeter(v) {
+    if (v === null) { meter.style.width = "50%"; meterText.textContent = "–"; return; }
+    const p = Math.round((v + 1) * 50);
+    meter.style.width = p + "%";
+    meterText.textContent = `${p}% that AlphaZero wins`;
+  }
+
+  function play(i) {
+    const { board, won } = AZ.step(canon, n, toCanon(i));
+    real[i] = blackToMove ? 1 : -1;
+    lastMove = i; canon = board;
+    if (won) over = blackToMove ? "black" : "white";
+    blackToMove = !blackToMove;
+  }
+
+  function agentMove() {
+    thinking = true;
+    setStatus("AlphaZero is thinking…");
+    const id = gameId;
+    setTimeout(() => {
+      if (id !== gameId) return;  // the game was restarted meanwhile
+      const m = models[n];
+      const sims = +simsEl.value;
+      let move, visits, value;
+      if (sims === 0) {
+        const { logits, value: v } = AZ.evaluate(m, canon);
+        move = -1;
+        for (let a = 0; a < n * n; a++) if (canon[a] === 0 && (move < 0 || logits[a] > logits[move])) move = a;
+        visits = null; value = v;
+      } else {
+        ({ move, visits, rootValue: value } = AZ.search(m, canon, sims));
+      }
+      // canonical -> real cell (same transpose as hexaz/hex.py)
+      heat = visits ? Array.from({ length: n * n }, (_, i) => visits[toCanon(i)] / sims) : null;
+      setMeter(value);
+      play(toCanon(move));
+      thinking = false;
+      finishTurn();
+    }, 30);
+  }
+
+  function finishTurn() {
+    draw();
+    if (over) {
+      const humanWon = (over === "black") === humanBlack;
+      setStatus(humanWon ? "You win! 🎉" : "AlphaZero wins.");
+      setMeter(humanWon ? -1 : 1);
+      return;
+    }
+    if ((blackToMove === humanBlack)) setStatus(`Your move (${humanBlack ? "Black" : "White"}).`);
+    else agentMove();
+  }
+
+  function onClick(i) {
+    if (over || thinking || real[i] !== 0 || blackToMove !== humanBlack) return;
+    heat = null;
+    play(i);
+    finishTurn();
+  }
+
+  // Cells of the winning chain: winner's stones reachable from both of its edges.
+  function winningChain() {
+    if (!over) return new Set();
+    const col = over === "black" ? 1 : -1;
+    const startEdge = (r, c) => col === 1 ? r === 0 : c === 0;
+    const endEdge = (r, c) => col === 1 ? r === n - 1 : c === n - 1;
+    const flood = (edge) => {
+      const seen = new Set(), st = [];
+      for (let i = 0; i < n * n; i++) if (real[i] === col && edge((i / n) | 0, i % n)) { seen.add(i); st.push(i); }
+      while (st.length) {
+        const i = st.pop(), r = (i / n) | 0, c = i % n;
+        for (const [dr, dc] of [[-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0]]) {
+          const rr = r + dr, cc = c + dc, j = rr * n + cc;
+          if (rr >= 0 && rr < n && cc >= 0 && cc < n && real[j] === col && !seen.has(j)) { seen.add(j); st.push(j); }
+        }
+      }
+      return seen;
+    };
+    const a = flood(startEdge), b = flood(endEdge);
+    return new Set([...a].filter((x) => b.has(x)));
+  }
+
+  function draw() {
+    const [xr] = centre(n - 1, n - 1);
+    const width = xr + W / 2 + PAD, height = PAD * 2 + S * 2 + (n - 1) * 1.5 * S;
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    const css = getComputedStyle(document.documentElement);
+    const black = css.getPropertyValue("--black"), whiteEdge = css.getPropertyValue("--white-edge");
+    const chain = winningChain();
+    let out = "";
+
+    // Goal edges: Black's top and bottom, White's left and right.
+    const seg = (p, q, colr) => `<line x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}" stroke="${colr}" stroke-width="6" stroke-linecap="round"/>`;
+    for (let c = 0; c < n; c++) {
+      const [x0, y0] = centre(0, c), [x1, y1] = centre(n - 1, c);
+      out += seg(corner(x0, y0, 5), corner(x0, y0, 0), black) + seg(corner(x0, y0, 0), corner(x0, y0, 1), black);
+      out += seg(corner(x1, y1, 2), corner(x1, y1, 3), black) + seg(corner(x1, y1, 3), corner(x1, y1, 4), black);
+    }
+    for (let r = 0; r < n; r++) {
+      const [x0, y0] = centre(r, 0), [x1, y1] = centre(r, n - 1);
+      out += seg(corner(x0, y0, 4), corner(x0, y0, 5), whiteEdge) + seg(corner(x0, y0, 3), corner(x0, y0, 4), whiteEdge);
+      out += seg(corner(x1, y1, 1), corner(x1, y1, 2), whiteEdge) + seg(corner(x1, y1, 0), corner(x1, y1, 1), whiteEdge);
+    }
+
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      const i = r * n + c, [x, y] = centre(r, c);
+      const pts = [0, 1, 2, 3, 4, 5].map((k) => corner(x, y, k).join(",")).join(" ");
+      const cls = real[i] === 0 && !over ? "cell empty" : "cell locked";
+      out += `<polygon class="${cls}" points="${pts}" data-i="${i}"/>`;
+      if (real[i] !== 0) {
+        out += `<circle cx="${x}" cy="${y}" r="${S * 0.68}" class="${real[i] === 1 ? "stone-b" : "stone-w"}" pointer-events="none"/>`;
+        if (chain.has(i)) out += `<circle cx="${x}" cy="${y}" r="${S * 0.78}" class="winline" pointer-events="none"/>`;
+        if (i === lastMove && !chain.has(i)) out += `<circle cx="${x}" cy="${y}" r="${S * 0.18}" class="last" pointer-events="none"/>`;
+      } else if (heat && showThinking.checked && heat[i] > 0.01) {
+        out += `<circle cx="${x}" cy="${y}" r="${S * (0.2 + 0.5 * Math.sqrt(heat[i]))}" class="heat" opacity="0.35"/>`;
+        if (heat[i] >= 0.05) out += `<text x="${x}" y="${y}" class="heat-label">${Math.round(heat[i] * 100)}%</text>`;
+      }
+    }
+    for (let c = 0; c < n; c++) { const [x, y] = centre(0, c); out += `<text class="coord" x="${x}" y="${y - S - 12}">${String.fromCharCode(97 + c)}</text>`; }
+    for (let r = 0; r < n; r++) { const [x, y] = centre(r, 0); out += `<text class="coord" x="${x - W / 2 - 14}" y="${y}">${r + 1}</text>`; }
+    svg.innerHTML = out;
+  }
+
+  svg.addEventListener("click", (e) => { const i = e.target.dataset && e.target.dataset.i; if (i !== undefined) onClick(+i); });
+
+  // Controls
+  const sizesEl = document.getElementById("sizes");
+  for (const s of sizes) {
+    const b = document.createElement("button");
+    b.textContent = `${s}×${s}`; b.className = s === n ? "on" : "";
+    b.onclick = () => { n = s; [...sizesEl.children].forEach((x) => x.classList.toggle("on", x === b)); newGame(); };
+    sizesEl.appendChild(b);
+  }
+  document.querySelectorAll("#side button").forEach((b) => b.onclick = () => {
+    humanBlack = b.dataset.v === "black";
+    document.querySelectorAll("#side button").forEach((x) => x.classList.toggle("on", x === b));
+    newGame();
+  });
+  const showSims = () => simsVal.textContent = simsEl.value === "0" ? "0 (network only)" : simsEl.value;
+  simsEl.oninput = showSims; showSims();
+  showThinking.onchange = draw;
+  document.getElementById("newGame").onclick = newGame;
+
+  if (!sizes.length) { setStatus("No trained model found in web/models/."); return; }
+  newGame();
+})();
+</script>
+</body>
+</html>

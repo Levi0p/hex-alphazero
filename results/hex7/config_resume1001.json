@@ -1,0 +1,19 @@
+{
+  "size": 7,
+  "channels": 32,
+  "blocks": 4,
+  "games": 256,
+  "sims": 64,
+  "moves": 16,
+  "temp_moves": null,
+  "random_open": 0.5,
+  "buffer": 300000,
+  "batch": 256,
+  "steps": 100,
+  "lr": 0.0003,
+  "iters": 500,
+  "eval_every": 50,
+  "seed": 0,
+  "out": "runs/hex7_seed0",
+  "resume": true
+}
