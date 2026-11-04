@@ -1,8 +1,6 @@
 # AlphaZero for Hex, from scratch
 
-I wanted to really understand AlphaZero, so I built it from scratch in JAX and taught it to play
-[Hex](https://en.wikipedia.org/wiki/Hex_(board_game)) by playing against itself. No human games, no hand-written
-strategy, no GPU: everything here was trained on my MacBook Air M1.
+I wanted to really understand AlphaZero, so I built it from scratch in JAX and taught it to play Hex by playing against itself. No hand-written strategy, no GPU, everything here was trained on my MacBook Air M1.
 
 The idea comes from Andy Jones's paper *Scaling Scaling Laws with Board Games* (2021), which studied AlphaZero on
 small Hex boards. Small boards are nice because they're **solved**, so instead of saying "it wins a lot" you can check
@@ -104,11 +102,3 @@ Second, macOS ships an old BSD `db.h` that hides Berkeley DB, so add
 `include_directories(BEFORE /opt/homebrew/opt/berkeley-db@5/include)` and
 `link_directories(/opt/homebrew/opt/berkeley-db@5/lib)` to the top-level `CMakeLists.txt`. Then `cmake .. && make mohex`,
 and copy `build/src/mohex/mohex` and `share/*.txt` into `third_party/`.
-
-## Credits
-
-- Silver et al., *Mastering the game of Go without human knowledge* (2017) and *A general reinforcement learning
-  algorithm that masters chess, shogi, and Go through self-play* (2018), for AlphaZero itself.
-- Andy Jones, *Scaling Scaling Laws with Board Games* (2021), for the idea of studying it on small Hex boards.
-- MoHex 2.0 and the Benzene project (University of Alberta), for the opponent and the referee.
-- I used an AI coding assistant while building this. Every result here came from actually running the code.
